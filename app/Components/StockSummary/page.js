@@ -56,7 +56,7 @@ export default function StockSummary() {
 
     return (
         <div className="mx-auto p-6 bg-gray-900 rounded-xl shadow-lg">
-            <h1 className="md:text-3xl text-2xl font-semibold text-center text-gray-300">
+            <h1 className="md:text-3xl text-2xl font-semibold text-center text-white">
                 AI-Powered Stock Summary
             </h1>
 
@@ -66,11 +66,11 @@ export default function StockSummary() {
                     placeholder="Enter stock symbol (e.g., AAPL)"
                     value={stockSymbol}
                     onChange={(e) => setStockSymbol(e.target.value)}
-                    className="flex-1 px-4 py-2 w-full rounded-lg border border-gray-500 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    className="flex-1 px-4 py-2 w-full rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
                 />
                 <button
                     onClick={fetchSummary}
-                    className={`px-6 py-2 rounded-lg bg-sky-500 text-white font-medium shadow-lg transition  ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                    className={`px-6 py-2 rounded-lg bg-sky-600 text-white font-medium shadow-lg transition ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
                     disabled={loading}
                 >
                     {loading ? "Loading..." : "Get Summary"}
@@ -116,18 +116,18 @@ export default function StockSummary() {
                                                 borderColor: [
                                                     "#FFD700", // Gold
                                                     "#1E90FF", // Royal Blue
-                                                    "rgba(54, 162, 235, 1)",
-                                                    "rgba(255, 159, 64, 1)",
-                                                    "rgba(153, 102, 255, 1)",
-                                                    "rgba(75, 192, 192, 1)",
+                                                    "#228B22", // Forest Green
+                                                    "#FF6347", // Tomato
+                                                    "#8A2BE2", // Blue Violet
+                                                    "#20B2AA", // Light Sea Green
                                                 ][index],
                                                 backgroundColor: [
                                                     "rgba(255, 215, 0, 0.2)", // Gold
                                                     "rgba(30, 144, 255, 0.2)", // Royal Blue
-                                                    "rgba(54, 162, 235, 0.2)",
-                                                    "rgba(255, 159, 64, 0.2)",
-                                                    "rgba(153, 102, 255, 0.2)",
-                                                    "rgba(75, 192, 192, 0.2)",
+                                                    "rgba(34, 139, 34, 0.2)", // Forest Green
+                                                    "rgba(255, 99, 71, 0.2)", // Tomato
+                                                    "rgba(138, 43, 226, 0.2)", // Blue Violet
+                                                    "rgba(32, 178, 170, 0.2)", // Light Sea Green
                                                 ][index],
                                                 tension: 0.4,
                                                 ...(index === 1 && { borderDash: [5, 5] }), // Dash pattern for predictions
@@ -140,7 +140,6 @@ export default function StockSummary() {
                 )}
             </div>
         </div>
-
     );
 
     async function getStockSummary(stockSymbol) {

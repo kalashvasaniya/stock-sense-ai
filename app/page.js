@@ -12,7 +12,7 @@ export default function Home() {
           Making stock market insights simple, actionable, and AI-driven.
         </p>
       </header>
-      <main className="max-w-4xl mx-auto">
+      <main className="mx-auto">
         <StockSummary />
       </main>
     </div>

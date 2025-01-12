@@ -1,3 +1,4 @@
+"use client";
 import OpenAI from "openai";
 
 // Configure OpenAI client with browser safety flag

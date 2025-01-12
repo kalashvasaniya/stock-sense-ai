@@ -1,3 +1,4 @@
+"use client";
 import StockSummary from "../app/Components/StockSummary/page";
 
 export default function Home() {

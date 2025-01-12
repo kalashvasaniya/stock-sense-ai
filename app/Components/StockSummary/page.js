@@ -84,7 +84,7 @@ export default function StockSummary() {
                 </div>
             )}
 
-            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3 overflow-x-auto">
                 {[graphData, predictionData, volumeData, volatilityData, movingAveragesData, marketTrendData].map(
                     (data, index) =>
                         data && (

@@ -57,7 +57,7 @@ export default function StockSummary() {
     return (
         <div className="mx-auto p-6 bg-gray-900 rounded-xl shadow-lg">
             <h1 className="md:text-3xl text-2xl font-semibold text-center text-gray-300">
-                Stock Analysis Dashboard
+                AI-Powered Stock Summary
             </h1>
 
             <div className="flex flex-col md:flex-row items-center gap-4 mt-6">

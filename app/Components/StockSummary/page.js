@@ -20,16 +20,32 @@ export default function StockSummary() {
     const [summary, setSummary] = useState(""); // State for the stock summary result
     const [loading, setLoading] = useState(false); // State for loading indicator
     const [graphData, setGraphData] = useState(null); // State for graph data
+    const [predictionData, setPredictionData] = useState(null); // State for future prediction data
+    const [volumeData, setVolumeData] = useState(null); // State for volume data
+    const [volatilityData, setVolatilityData] = useState(null); // State for volatility data
+    const [movingAveragesData, setMovingAveragesData] = useState(null); // State for moving averages data
+    const [marketTrendData, setMarketTrendData] = useState(null); // State for market trend data
 
-    // Function to fetch stock summary
+    // Function to fetch stock summary and additional data
     const fetchSummary = async () => {
         setLoading(true);
         setSummary(""); // Reset summary while fetching
         setGraphData(null); // Reset graph data
+        setPredictionData(null); // Reset prediction data
+        setVolumeData(null); // Reset volume data
+        setVolatilityData(null); // Reset volatility data
+        setMovingAveragesData(null); // Reset moving averages
+        setMarketTrendData(null); // Reset market trend data
+
         try {
             const result = await getStockSummary(stockSymbol);
             setSummary(result.summary); // Update with the fetched summary
             setGraphData(result.graphData); // Update with graph data
+            setPredictionData(result.predictionData); // Update with future prediction data
+            setVolumeData(result.volumeData); // Update with volume data
+            setVolatilityData(result.volatilityData); // Update with volatility data
+            setMovingAveragesData(result.movingAveragesData); // Update with moving averages data
+            setMarketTrendData(result.marketTrendData); // Update with market trend data
         } catch (error) {
             setSummary("Error fetching stock summary. Please try again."); // Handle errors
         }
@@ -100,7 +116,7 @@ export default function StockSummary() {
                 </div>
             )}
 
-            {/* Display graph if data is available */}
+            {/* Display stock performance graph if data is available */}
             {graphData && (
                 <div className="mt-8 p-4 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
                     <p className="font-medium text-gray-100 mb-3">Stock Performance:</p>
@@ -120,10 +136,123 @@ export default function StockSummary() {
                     />
                 </div>
             )}
+
+            {/* Display future prediction graph if data is available */}
+            {predictionData && (
+                <div className="mt-8 p-4 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
+                    <p className="font-medium text-gray-100 mb-3">Future Prediction:</p>
+                    <Line
+                        data={{
+                            labels: predictionData.labels,
+                            datasets: [
+                                {
+                                    label: "Predicted Stock Price",
+                                    data: predictionData.predictedPrices,
+                                    borderColor: "rgba(255, 99, 132, 1)",
+                                    backgroundColor: "rgba(255, 99, 132, 0.2)",
+                                    tension: 0.4,
+                                    borderDash: [5, 5], // Dash pattern for predicted line
+                                },
+                            ],
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Display volume graph if data is available */}
+            {volumeData && (
+                <div className="mt-8 p-4 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
+                    <p className="font-medium text-gray-100 mb-3">Trading Volume:</p>
+                    <Line
+                        data={{
+                            labels: volumeData.labels,
+                            datasets: [
+                                {
+                                    label: "Volume",
+                                    data: volumeData.data,
+                                    borderColor: "rgba(54, 162, 235, 1)",
+                                    backgroundColor: "rgba(54, 162, 235, 0.2)",
+                                    tension: 0.4,
+                                },
+                            ],
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Display volatility graph if data is available */}
+            {volatilityData && (
+                <div className="mt-8 p-4 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
+                    <p className="font-medium text-gray-100 mb-3">Volatility:</p>
+                    <Line
+                        data={{
+                            labels: volatilityData.labels,
+                            datasets: [
+                                {
+                                    label: "Volatility",
+                                    data: volatilityData.data,
+                                    borderColor: "rgba(255, 159, 64, 1)",
+                                    backgroundColor: "rgba(255, 159, 64, 0.2)",
+                                    tension: 0.4,
+                                },
+                            ],
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Display moving averages if data is available */}
+            {movingAveragesData && (
+                <div className="mt-8 p-4 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
+                    <p className="font-medium text-gray-100 mb-3">Moving Averages:</p>
+                    <Line
+                        data={{
+                            labels: movingAveragesData.labels,
+                            datasets: [
+                                {
+                                    label: "50-Day Moving Average",
+                                    data: movingAveragesData.shortTerm,
+                                    borderColor: "rgba(153, 102, 255, 1)",
+                                    backgroundColor: "rgba(153, 102, 255, 0.2)",
+                                    tension: 0.4,
+                                },
+                                {
+                                    label: "200-Day Moving Average",
+                                    data: movingAveragesData.longTerm,
+                                    borderColor: "rgba(255, 99, 132, 1)",
+                                    backgroundColor: "rgba(255, 99, 132, 0.2)",
+                                    tension: 0.4,
+                                },
+                            ],
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Display market trend graph if data is available */}
+            {marketTrendData && (
+                <div className="mt-8 p-4 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
+                    <p className="font-medium text-gray-100 mb-3">Market Trend:</p>
+                    <Line
+                        data={{
+                            labels: marketTrendData.labels,
+                            datasets: [
+                                {
+                                    label: "Market Sentiment",
+                                    data: marketTrendData.data,
+                                    borderColor: "rgba(75, 192, 192, 1)",
+                                    backgroundColor: "rgba(75, 192, 192, 0.2)",
+                                    tension: 0.4,
+                                },
+                            ],
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 
-    // Sample API function for fetching stock summary
+    // Sample API function for fetching stock summary and additional data
     async function getStockSummary(stockSymbol) {
         if (stockSymbol.toUpperCase() === "AAPL") {
             return {
@@ -132,6 +261,27 @@ export default function StockSummary() {
                 graphData: {
                     labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
                     data: [170, 172, 174, 175, 173], // Example stock prices
+                },
+                predictionData: {
+                    labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Next Monday", "Next Tuesday"],
+                    predictedPrices: [173, 175, 178, 180, 182, 185, 188], // Example predicted prices for the next week
+                },
+                volumeData: {
+                    labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+                    data: [1000000, 1200000, 1100000, 1300000, 1150000], // Example volume data
+                },
+                volatilityData: {
+                    labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+                    data: [2, 3, 1.8, 2.5, 3.1], // Example volatility data
+                },
+                movingAveragesData: {
+                    labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+                    shortTerm: [173, 174, 175, 174, 175], // 50-Day moving average data
+                    longTerm: [170, 172, 173, 174, 175], // 200-Day moving average data
+                },
+                marketTrendData: {
+                    labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+                    data: [0.5, 0.6, 0.4, 0.7, 0.6], // Market sentiment data
                 },
             };
         } else {

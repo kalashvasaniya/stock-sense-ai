@@ -1,3 +1,6 @@
+```markdown
+# StockSenseAI
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
@@ -15,6 +18,21 @@ bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+### Set Up OpenAI API Key
+
+To use this project with OpenAI, you need to add your OpenAI API key in the `.env.local` file.
+
+1. Create a file named `.env.local` in the root of the project.
+2. Add the following line, replacing `your-openai-key` with your actual OpenAI API key:
+
+```
+OPENAI_API_KEY=your-openai-key
+```
+
+This will allow the application to authenticate with OpenAI services.
+
+### Start Editing
 
 You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
 
@@ -34,3 +52,4 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```

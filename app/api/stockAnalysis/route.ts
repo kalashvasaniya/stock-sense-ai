@@ -64,13 +64,7 @@ export async function GET(request: Request) {
         };
 
 
-        let analysis: {
-            summary: string
-            outlook: "bullish" | "bearish" | "neutral"
-            confidence: number
-            keyFactors: string[]
-        }
-
+        let analysis
         try {
             // Use Perplexity API for analysis
             const perplexityResponse = await fetch("https://api.perplexity.ai/chat/completions", {
@@ -122,12 +116,7 @@ export async function GET(request: Request) {
                 throw new Error("Invalid response from Perplexity API")
             }
 
-            let parsedAnalysis: {
-                summary?: string
-                outlook?: "bullish" | "bearish" | "neutral"
-                confidence?: number
-                keyFactors?: string[]
-            }
+            let parsedAnalysis
             try {
                 // First, try to parse the content if it's a string
                 parsedAnalysis = JSON.parse(perplexityData.choices[0].message.content)

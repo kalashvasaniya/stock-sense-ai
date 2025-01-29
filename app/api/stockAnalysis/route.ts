@@ -66,68 +66,58 @@ export async function GET(request) {
             weekLow52: isNaN(Number(overviewData?.["52WeekLow"])) ? "N/A" : Number(overviewData?.["52WeekLow"]),
         };
 
+        // Fetch analysis from Perplexity AI
         let analysis = {
-            summary: "Analysis unavailable",
+            summary: "Unable to generate analysis due to an error.",
             outlook: "neutral",
             confidence: 0,
-            keyFactors: []
+            keyFactors: ["API Error"],
         };
 
         try {
-            const analysisPrompt = `Analyze ${stockSymbol} (${combinedData.companyName}). Current price: $${combinedData.currentPrice?.toFixed(2) || 'N/A'}. 
-                Change: ${combinedData.changePercent?.toFixed(2) + '%' || 'N/A'}. Market cap: $${combinedData.marketCap?.toLocaleString() || 'N/A'}. 
-                Sector: ${combinedData.sector}. Industry: ${combinedData.industry}. 
-                Provide a JSON analysis with these exact keys: summary, outlook (bullish/bearish/neutral), confidence (0-100), keyFactors (array).`;
-
-            // Updated Perplexity API call
             const perplexityResponse = await fetch("https://api.perplexity.ai/chat/completions", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
+                    Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
                 },
                 body: JSON.stringify({
-                    model: "sonar-medium-chat",
+                    model: "pplx-7b-chat", // Use correct model name
+                    response_format: { type: "json_object" }, // Request JSON format
                     messages: [
                         {
                             role: "system",
-                            content: "You are a financial analyst. Return ONLY valid JSON with these exact keys: summary, outlook, confidence, keyFactors."
+                            content: "You are a financial analyst. Provide a brief analysis and future outlook for the given stock data in valid JSON format."
                         },
                         {
                             role: "user",
-                            content: analysisPrompt
+                            content: `Analyze ${stockSymbol} (${combinedData.companyName}). Current price: $${combinedData.currentPrice?.toFixed(2) || 'N/A'}. `
+                                + `Change: ${combinedData.changePercent?.toFixed(2) + '%' || 'N/A'}. Market cap: $${combinedData.marketCap?.toLocaleString() || 'N/A'}. `
+                                + `Sector: ${combinedData.sector}. Industry: ${combinedData.industry}. `
+                                + "Return JSON analysis with these EXACT keys: summary, outlook (bullish/bearish/neutral), confidence (0-100), keyFactors (array)."
                         }
                     ],
-                    // Updated response format specification
-                    response_format: { type: "json_object" },
-                    temperature: 0.2,
-                    max_tokens: 500
+                    max_tokens: 300,
+                    temperature: 0.3,
                 }),
             });
-            // Add debug logging
-            console.log("Perplexity Status:", perplexityResponse.status);
-            const perplexityData = await perplexityResponse.json();
-            console.log("Perplexity Response:", JSON.stringify(perplexityData, null, 2));
 
             if (!perplexityResponse.ok) {
-                throw new Error(`API Error: ${perplexityData?.error?.message || perplexityResponse.statusText}`);
+                throw new Error(`Perplexity API error: ${perplexityResponse.status}`);
             }
 
-            const rawAnalysis = perplexityData.choices[0].message.content;
-            try {
-                analysis = JSON.parse(rawAnalysis);
-                // Validate response structure
-                if (!analysis.summary || !analysis.outlook) {
-                    throw new Error("Invalid analysis structure");
+            const perplexityData = await perplexityResponse.json();
+
+            if (perplexityData?.choices?.[0]?.message?.content) {
+                try {
+                    analysis = JSON.parse(perplexityData.choices[0].message.content);
+                } catch (parseError) {
+                    console.error("JSON parsing error:", parseError);
+                    analysis.summary = "Analysis format error";
                 }
-            } catch (parseError) {
-                console.error("Parse Error:", parseError);
-                analysis.summary = "Analysis format error";
             }
-
         } catch (error) {
-            console.error("Perplexity Error:", error.message);
-            analysis.summary = `Analysis Error: ${error.message}`;
+            console.error("Perplexity API error:", error.message);
         }
 
         return NextResponse.json({

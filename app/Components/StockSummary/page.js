@@ -20,7 +20,7 @@ const EnhancedStockDashboard = () => {
         setError("");
 
         try {
-            const response = await fetch(`/api/stockAnalysis?symbol=${stockSymbol.trim()}`);
+            const response = await fetch(`https://stock-sense-openai.vercel.app/api/stockAnalysis?symbol=${stockSymbol.trim()}`);
             const data = await response.json();
             if (!response.ok) throw new Error(data.error);
             setStockData(data);

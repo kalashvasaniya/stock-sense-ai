@@ -67,7 +67,12 @@ export async function GET(request) {
         };
 
         // Fetch analysis from Perplexity AI
-        let analysis
+        let analysis = {
+            summary: "Unable to generate analysis due to an error.",
+            outlook: "neutral",
+            confidence: 0,
+            keyFactors: ["API Error"],
+        };
 
         try {
             const perplexityResponse = await fetch("https://api.perplexity.ai/chat/completions", {
@@ -77,7 +82,7 @@ export async function GET(request) {
                     Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
                 },
                 body: JSON.stringify({
-                    model: "pplx-7b-chat", // Use correct model name
+                    model: "pplx-7b-online", // Use correct model name
                     response_format: { type: "json_object" }, // Request JSON format
                     messages: [
                         {

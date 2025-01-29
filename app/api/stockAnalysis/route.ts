@@ -82,43 +82,42 @@ export async function GET(request) {
                     Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
                 },
                 body: JSON.stringify({
-                    model: "sonar",
+                    model: "pplx-7b-chat", // Use correct model name
+                    response_format: { type: "json_object" }, // Request JSON format
                     messages: [
                         {
                             role: "system",
-                            content:
-                                "You are a financial analyst. Provide a brief analysis and future outlook for the given stock data.",
+                            content: "You are a financial analyst. Provide a brief analysis and future outlook for the given stock data in valid JSON format."
                         },
                         {
                             role: "user",
-                            content: `Analyze the stock ${stockSymbol} (${combinedData.companyName}) based on the following data:
-                            Sector: ${combinedData.sector}
-                            Industry: ${combinedData.industry}
-                            Current Price: ${typeof combinedData.currentPrice === 'number' ? '$' + combinedData.currentPrice.toFixed(2) : combinedData.currentPrice}
-                            Change: ${typeof combinedData.change === 'number' ? '$' + combinedData.change.toFixed(2) : combinedData.change} (${typeof combinedData.changePercent === 'number' ? combinedData.changePercent.toFixed(2) + '%' : combinedData.changePercent})
-                            Open: ${typeof combinedData.open === 'number' ? '$' + combinedData.open.toFixed(2) : combinedData.open}
-                            Previous Close: ${typeof combinedData.previousClose === 'number' ? '$' + combinedData.previousClose.toFixed(2) : combinedData.previousClose}
-                            Day Range: ${typeof combinedData.low === 'number' ? '$' + combinedData.low.toFixed(2) : combinedData.low} - ${typeof combinedData.high === 'number' ? '$' + combinedData.high.toFixed(2) : combinedData.high}
-                            Market Cap: ${typeof combinedData.marketCap === 'number' ? '$' + combinedData.marketCap.toLocaleString() : combinedData.marketCap}
-                            Provide a brief analysis and future outlook. Return as JSON:
-                            {
-                              "summary": "Brief analysis",
-                              "outlook": "bullish|bearish|neutral",
-                              "confidence": number (0-100),
-                              "keyFactors": ["factor1", "factor2"]
-                            }`,
-                        },
+                            content: `Analyze ${stockSymbol} (${combinedData.companyName}). Current price: $${combinedData.currentPrice?.toFixed(2) || 'N/A'}. `
+                                + `Change: ${combinedData.changePercent?.toFixed(2) + '%' || 'N/A'}. Market cap: $${combinedData.marketCap?.toLocaleString() || 'N/A'}. `
+                                + `Sector: ${combinedData.sector}. Industry: ${combinedData.industry}. `
+                                + "Return JSON analysis with these EXACT keys: summary, outlook (bullish/bearish/neutral), confidence (0-100), keyFactors (array)."
+                        }
                     ],
-                    max_tokens: 250,
+                    max_tokens: 300,
+                    temperature: 0.3,
                 }),
             });
 
+            if (!perplexityResponse.ok) {
+                throw new Error(`Perplexity API error: ${perplexityResponse.status}`);
+            }
+
             const perplexityData = await perplexityResponse.json();
+
             if (perplexityData?.choices?.[0]?.message?.content) {
-                analysis = JSON.parse(perplexityData.choices[0].message.content);
+                try {
+                    analysis = JSON.parse(perplexityData.choices[0].message.content);
+                } catch (parseError) {
+                    console.error("JSON parsing error:", parseError);
+                    analysis.summary = "Analysis format error";
+                }
             }
         } catch (error) {
-            console.error("Error fetching analysis:", error);
+            console.error("Perplexity API error:", error.message);
         }
 
         return NextResponse.json({

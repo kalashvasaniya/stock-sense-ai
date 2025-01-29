@@ -67,12 +67,7 @@ export async function GET(request) {
         };
 
         // Fetch analysis from Perplexity AI
-        let analysis = {
-            summary: "Unable to generate analysis due to an error.",
-            outlook: "neutral",
-            confidence: 0,
-            keyFactors: ["API Error"],
-        };
+        let analysis
 
         try {
             const perplexityResponse = await fetch("https://api.perplexity.ai/chat/completions", {

@@ -1,3 +1,4 @@
+"use client";
 import { useState } from 'react';
 import { Line, Bar } from 'recharts';
 import { AlertCircle, TrendingUp, TrendingDown, DollarSign, BarChart2, Activity } from 'lucide-react';

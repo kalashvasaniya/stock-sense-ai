@@ -9,15 +9,23 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "^0.1.6",
+    "@heroicons/react": "^2.2.0",
+    "@radix-ui/react-alert-dialog": "^1.1.5",
     "chart.js": "^4.4.7",
+    "framer-motion": "^12.0.6",
+    "lucide-react": "^0.474.0",
     "next": "15.1.4",
     "openai": "^4.78.1",
     "react": "^19.0.0",
     "react-chartjs-2": "^5.3.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "recharts": "^2.15.1"
   },
   "devDependencies": {
+    "@types/react": "19.0.8",
     "postcss": "^8",
-    "tailwindcss": "^3.4.1"
+    "tailwindcss": "^3.4.1",
+    "typescript": "5.7.3"
   }
 }

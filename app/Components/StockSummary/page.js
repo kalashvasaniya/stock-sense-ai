@@ -1,314 +1,211 @@
-"use client";
-import { useState, useEffect } from "react";
-import { Line } from "react-chartjs-2";
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-} from "chart.js";
-import { getStockAnalysis } from "../../utils/perplexity/page";
+import { useState } from 'react';
+import { Line, Bar } from 'recharts';
+import { AlertCircle, TrendingUp, TrendingDown, DollarSign, BarChart2, Activity } from 'lucide-react';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+const EnhancedStockDashboard = () => {
+    const [stockSymbol, setStockSymbol] = useState("");
+    const [stockData, setStockData] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
 
-const extractNumberFromText = (text, pattern) => {
-    if (!text || typeof text !== 'string') return null;
-
-    try {
-        const match = text.match(new RegExp(`${pattern}[:\\s]*(\\$?\\d+(?:[,.]\\d+)?)`));
-        if (!match || !match[1]) return null;
-        return parseFloat(match[1].replace(/[$,]/g, ''));
-    } catch (error) {
-        console.error("Error extracting number:", error);
-        return null;
-    }
-};
-
-const processStockData = (analysisText, stockSymbol) => {
-    try {
-        // Ensure we have valid input
-        if (!analysisText || typeof analysisText !== 'string') {
-            throw new Error('Invalid analysis text received');
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!stockSymbol.trim()) {
+            setError("Please enter a stock symbol");
+            return;
         }
 
-        // Default values for when extraction fails
-        const defaultPrice = 100;
-        const defaultVolume = 100000;
-
-        // Extract key metrics with fallbacks
-        const currentPrice = extractNumberFromText(analysisText, 'current price|trading at|price of') || defaultPrice;
-        const volume = extractNumberFromText(analysisText, 'volume|trading volume') || defaultVolume;
-
-        // Generate dates for x-axis
-        const dates = Array.from({ length: 5 }, (_, i) => {
-            const date = new Date();
-            date.setDate(date.getDate() - (4 - i));
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        });
-
-        // Generate price history based on current price
-        const prices = Array.from({ length: 5 }, (_, i) => {
-            const basePrice = currentPrice * (1 - (Math.random() * 0.1)); // Start up to 10% lower
-            return basePrice * (1 + (i * 0.02)); // Trending upward slightly
-        });
-
-        // Analyze sentiment
-        const sentimentIndicators = {
-            positive: ['bullish', 'positive', 'growth', 'upward', 'strong', 'gain'],
-            negative: ['bearish', 'negative', 'decline', 'downward', 'weak', 'loss']
-        };
-
-        const lowerText = analysisText.toLowerCase();
-        const positiveCount = sentimentIndicators.positive.filter(word => lowerText.includes(word)).length;
-        const negativeCount = sentimentIndicators.negative.filter(word => lowerText.includes(word)).length;
-        const sentimentScore = 50 + ((positiveCount - negativeCount) * 10);
-
-        // Generate future dates
-        const futureDates = Array.from({ length: 3 }, (_, i) => {
-            const date = new Date();
-            date.setDate(date.getDate() + i + 1);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        });
-
-        return {
-            summary: analysisText,
-            graphData: {
-                labels: dates,
-                data: prices,
-            },
-            predictionData: {
-                labels: [...dates.slice(-2), ...futureDates],
-                predictedPrices: [
-                    ...prices.slice(-2),
-                    ...Array.from({ length: 3 }, (_, i) => {
-                        const lastPrice = prices[prices.length - 1];
-                        return lastPrice * (1 + ((Math.random() * 0.04 - 0.02) * (i + 1)));
-                    })
-                ],
-            },
-            volumeData: {
-                labels: dates,
-                data: Array.from({ length: 5 }, () => volume * (0.8 + Math.random() * 0.4)),
-            },
-            volatilityData: {
-                labels: dates,
-                data: Array.from({ length: 5 }, (_, i) => {
-                    if (i === 0) return 1;
-                    return Math.abs((prices[i] - prices[i - 1]) / prices[i - 1] * 100);
-                }),
-            },
-            movingAveragesData: {
-                labels: dates,
-                shortTerm: prices.map((_, i) => {
-                    const slice = prices.slice(Math.max(0, i - 2), i + 1);
-                    return slice.reduce((sum, p) => sum + p, 0) / slice.length;
-                }),
-                longTerm: prices.map((_, i) => {
-                    const slice = prices.slice(Math.max(0, i - 4), i + 1);
-                    return slice.reduce((sum, p) => sum + p, 0) / slice.length;
-                }),
-            },
-            marketTrendData: {
-                labels: dates,
-                data: Array.from({ length: 5 }, () => sentimentScore + (Math.random() * 10 - 5)),
-            },
-        };
-    } catch (error) {
-        console.error("Error processing stock data:", error);
-        // Return a minimal valid dataset on error
-        const dates = Array.from({ length: 5 }, (_, i) => `Day ${i + 1}`);
-        return {
-            summary: `Error processing data for ${stockSymbol}. Original analysis: ${analysisText || 'No analysis available'}`,
-            graphData: {
-                labels: dates,
-                data: Array.from({ length: 5 }, () => 100 + Math.random() * 10),
-            },
-            predictionData: {
-                labels: dates,
-                predictedPrices: Array.from({ length: 5 }, () => 100 + Math.random() * 10),
-            },
-            volumeData: {
-                labels: dates,
-                data: Array.from({ length: 5 }, () => 100000 + Math.random() * 50000),
-            },
-            volatilityData: {
-                labels: dates,
-                data: Array.from({ length: 5 }, () => 1 + Math.random() * 2),
-            },
-            movingAveragesData: {
-                labels: dates,
-                shortTerm: Array.from({ length: 5 }, () => 100 + Math.random() * 10),
-                longTerm: Array.from({ length: 5 }, () => 98 + Math.random() * 10),
-            },
-            marketTrendData: {
-                labels: dates,
-                data: Array.from({ length: 5 }, () => 50 + Math.random() * 10),
-            },
-        };
-    }
-};
-
-export default function StockSummary() {
-    const [stockSymbol, setStockSymbol] = useState("AAPL");
-    const [summary, setSummary] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [graphData, setGraphData] = useState(null);
-    const [predictionData, setPredictionData] = useState(null);
-    const [volumeData, setVolumeData] = useState(null);
-    const [volatilityData, setVolatilityData] = useState(null);
-    const [movingAveragesData, setMovingAveragesData] = useState(null);
-    const [marketTrendData, setMarketTrendData] = useState(null);
-
-    const fetchSummary = async () => {
         setLoading(true);
-        setSummary("");
-        setGraphData(null);
-        setPredictionData(null);
-        setVolumeData(null);
-        setVolatilityData(null);
-        setMovingAveragesData(null);
-        setMarketTrendData(null);
+        setError("");
 
         try {
-            const analysisResult = await getStockAnalysis(stockSymbol);
-            const result = processStockData(analysisResult, stockSymbol);
-
-            setSummary(result.summary);
-            setGraphData(result.graphData);
-            setPredictionData(result.predictionData);
-            setVolumeData(result.volumeData);
-            setVolatilityData(result.volatilityData);
-            setMovingAveragesData(result.movingAveragesData);
-            setMarketTrendData(result.marketTrendData);
-        } catch (error) {
-            setSummary("Error fetching stock summary. Please try again.");
-            console.error("Error:", error);
+            const response = await fetch(`/api/stockAnalysis?symbol=${stockSymbol.trim()}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+            setStockData(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
-    useEffect(() => {
-        fetchSummary();
-    }, []);
+    const MetricCard = ({ title, value, icon: Icon, change, color = "blue" }) => (
+        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
+            <div className="flex items-start justify-between">
+                <div>
+                    <p className="text-gray-400 text-sm">{title}</p>
+                    <p className="text-2xl font-bold mt-2 text-white">{value}</p>
+                    {change && (
+                        <p className={`text-sm mt-2 ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {change >= 0 ? '↑' : '↓'} {Math.abs(change).toFixed(2)}%
+                        </p>
+                    )}
+                </div>
+                <div className={`p-3 rounded-lg bg-${color}-500/20`}>
+                    <Icon className={`w-6 h-6 text-${color}-500`} />
+                </div>
+            </div>
+        </div>
+    );
 
     return (
-        <div className="mx-auto p-6 bg-gray-900 rounded-xl shadow-lg">
-            <h1 className="md:text-3xl text-2xl font-semibold text-center text-white">
-                AI-Powered Stock Summary
-            </h1>
+        <div className="min-h-screen bg-gray-900 p-8">
+            <div className="max-w-7xl mx-auto">
+                <h1 className="text-4xl font-bold text-white mb-8 text-center">
+                    Advanced Stock Analysis Dashboard
+                </h1>
 
-            <div className="flex flex-col md:flex-row items-center gap-4 mt-6">
-                <input
-                    type="text"
-                    placeholder="Enter stock symbol (e.g., AAPL)"
-                    value={stockSymbol}
-                    onChange={(e) => setStockSymbol(e.target.value.toUpperCase())}
-                    className="flex-1 px-4 py-2 w-full rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                />
-                <button
-                    onClick={fetchSummary}
-                    className={`px-6 py-2 rounded-lg bg-sky-600 text-white font-medium shadow-lg transition ${loading ? "opacity-50 cursor-not-allowed" : "hover:bg-sky-700"}`}
-                    disabled={loading}
-                >
-                    {loading ? "Loading..." : "Get Summary"}
-                </button>
-            </div>
+                <form onSubmit={handleSubmit} className="mb-8">
+                    <div className="flex gap-4">
+                        <input
+                            type="text"
+                            value={stockSymbol}
+                            onChange={(e) => setStockSymbol(e.target.value.toUpperCase())}
+                            className="flex-1 px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-white focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter stock symbol (e.g., AAPL)"
+                            maxLength={5}
+                        />
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            {loading ? "Loading..." : "Analyze"}
+                        </button>
+                    </div>
+                </form>
 
-            {summary && (
-                <div className="mt-8 p-4 bg-gray-800 rounded-lg shadow">
-                    <h2 className="text-xl font-semibold text-white mb-2">Stock Summary</h2>
-                    <p className="text-gray-300 whitespace-pre-line">{summary}</p>
-                </div>
-            )}
+                {/* {error && (
+                    <Alert variant="destructive" className="mb-6">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )} */}
 
-            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3 overflow-x-auto">
-                {[graphData, predictionData, volumeData, volatilityData, movingAveragesData, marketTrendData].map(
-                    (data, index) =>
-                        data && (
-                            <div key={index} className="p-4 bg-gradient-to-b from-gray-800 to-gray-900 rounded-lg border border-gray-700 shadow-md hover:shadow-xl transition">
-                                <h2 className="text-xl font-semibold text-white mb-2">
-                                    {[
-                                        "Stock Performance",
-                                        "Price Prediction",
-                                        "Trading Volume",
-                                        "Volatility",
-                                        "Moving Averages",
-                                        "Market Trend",
-                                    ][index]}
-                                </h2>
-                                <Line
-                                    data={{
-                                        labels: data.labels,
-                                        datasets: [
-                                            {
-                                                label: [
-                                                    "Stock Price",
-                                                    "Predicted Price",
-                                                    "Volume",
-                                                    "Volatility",
-                                                    "50-Day MA",
-                                                    "Market Sentiment",
-                                                ][index],
-                                                data: data.data || data.predictedPrices || data.shortTerm,
-                                                borderColor: [
-                                                    "#FFD700",
-                                                    "#1E90FF",
-                                                    "#228B22",
-                                                    "#FF6347",
-                                                    "#8A2BE2",
-                                                    "#20B2AA",
-                                                ][index],
-                                                backgroundColor: [
-                                                    "rgba(255, 215, 0, 0.2)",
-                                                    "rgba(30, 144, 255, 0.2)",
-                                                    "rgba(34, 139, 34, 0.2)",
-                                                    "rgba(255, 99, 71, 0.2)",
-                                                    "rgba(138, 43, 226, 0.2)",
-                                                    "rgba(32, 178, 170, 0.2)",
-                                                ][index],
-                                                tension: 0.4,
-                                                ...(index === 1 && { borderDash: [5, 5] }),
-                                            },
-                                            ...(index === 4 ? [{
-                                                label: "200-Day MA",
-                                                data: data.longTerm,
-                                                borderColor: "#FF69B4",
-                                                backgroundColor: "rgba(255, 105, 180, 0.2)",
-                                                tension: 0.4,
-                                            }] : []),
-                                        ],
-                                    }}
-                                    options={{
-                                        responsive: true,
-                                        plugins: {
-                                            legend: {
-                                                labels: {
-                                                    color: "#fff"
-                                                }
-                                            }
-                                        },
-                                        scales: {
-                                            x: {
-                                                ticks: {
-                                                    color: "#fff"
-                                                }
-                                            },
-                                            y: {
-                                                ticks: {
-                                                    color: "#fff"
-                                                }
-                                            }
-                                        }
-                                    }}
-                                />
+                {stockData && (
+                    <div className="space-y-6">
+                        {/* Company Header */}
+                        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white">{stockData.companyName}</h2>
+                                    <p className="text-gray-400">{stockData.symbol} • {stockData.sector}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-3xl font-bold text-white">${stockData.currentPrice.toFixed(2)}</p>
+                                    <p className={`text-lg ${stockData.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {stockData.change >= 0 ? '+' : ''}{stockData.change.toFixed(2)} ({stockData.changePercent.toFixed(2)}%)
+                                    </p>
+                                </div>
                             </div>
-                        )
+                        </div>
+
+                        {/* Key Metrics Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <MetricCard
+                                title="Market Cap"
+                                value={`$${(stockData.marketCap / 1e9).toFixed(2)}B`}
+                                icon={DollarSign}
+                                color="green"
+                            />
+                            <MetricCard
+                                title="Volume"
+                                value={stockData.volume.toLocaleString()}
+                                icon={BarChart2}
+                                color="purple"
+                            />
+                            <MetricCard
+                                title="Market Cap"
+                                value={stockData.marketCap !== "N/A" ? `$${(stockData.marketCap / 1e9).toFixed(2)}B` : "N/A"}
+                                icon={DollarSign}
+                                color="green"
+                            />
+                            <MetricCard
+                                title="Volume"
+                                value={stockData.volume !== "N/A" ? stockData.volume.toLocaleString() : "N/A"}
+                                icon={BarChart2}
+                                color="purple"
+                            />
+
+                        </div>
+
+                        {/* Trading Information */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                                <h3 className="text-xl font-semibold text-white mb-4">Trading Information</h3>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Open</span>
+                                        <span className="text-white">
+                                            {typeof stockData.open === 'number'
+                                                ? `$${stockData.open.toFixed(2)}`
+                                                : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Previous Close</span>
+                                        <span className="text-white">
+                                            {typeof stockData.previousClose === 'number'
+                                                ? `$${stockData.previousClose.toFixed(2)}`
+                                                : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Day Range</span>
+                                        <span className="text-white">
+                                            {typeof stockData.low === 'number' && typeof stockData.high === 'number'
+                                                ? `$${stockData.low.toFixed(2)} - $${stockData.high.toFixed(2)}`
+                                                : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">52 Week Range</span>
+                                        <span className="text-white">
+                                            {typeof stockData.weekLow52 === 'number' && typeof stockData.weekHigh52 === 'number'
+                                                ? `$${stockData.weekLow52.toFixed(2)} - $${stockData.weekHigh52.toFixed(2)}`
+                                                : 'N/A'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                                <h3 className="text-xl font-semibold text-white mb-4">Company Overview</h3>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Industry</span>
+                                        <span className="text-white">{stockData.industry}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Sector</span>
+                                        <span className="text-white">{stockData.sector}</span>
+                                    </div>
+                                    {stockData.analysis && (
+                                        <div className="mt-4">
+                                            <h4 className="text-gray-400 mb-2">AI Analysis</h4>
+                                            <p className="text-white">{stockData.analysis.summary}</p>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <span className={`px-3 py-1 rounded-full text-sm ${stockData.analysis.outlook === 'bullish' ? 'bg-green-500/20 text-green-400' :
+                                                    stockData.analysis.outlook === 'bearish' ? 'bg-red-500/20 text-red-400' :
+                                                        'bg-yellow-500/20 text-yellow-400'
+                                                    }`}>
+                                                    {stockData.analysis.outlook.toUpperCase()}
+                                                </span>
+                                                <span className="text-gray-400">
+                                                    Confidence: {stockData.analysis.confidence}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>
     );
-}
+};
+
+export default EnhancedStockDashboard;

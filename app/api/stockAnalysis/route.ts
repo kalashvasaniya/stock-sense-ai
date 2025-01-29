@@ -17,34 +17,29 @@ export async function GET(request) {
             return NextResponse.json({ error: "Missing API keys" }, { status: 500 });
         }
 
-        // Fetch stock data from Finnhub API
-        const finnhubResponse = await fetch(
-            `https://finnhub.io/api/v1/quote?symbol=${stockSymbol}&token=${FINNHUB_API_KEY}`
-        );
-        const finnhubData = await finnhubResponse.json();
+        // Fetch stock data from Finnhub
+        const [finnhubResponse, alphaVantageResponse, overviewResponse] = await Promise.all([
+            fetch(`https://finnhub.io/api/v1/quote?symbol=${stockSymbol}&token=${FINNHUB_API_KEY}`),
+            fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${stockSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}`),
+            fetch(`https://www.alphavantage.co/query?function=OVERVIEW&symbol=${stockSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}`)
+        ]);
+
+        const [finnhubData, alphaVantageData, overviewData] = await Promise.all([
+            finnhubResponse.json(),
+            alphaVantageResponse.json(),
+            overviewResponse.json()
+        ]);
 
         if (!finnhubResponse.ok || finnhubData.error) {
             throw new Error(`Finnhub API error: ${finnhubData.error}`);
         }
 
-        // Fetch stock data from Alpha Vantage API
-        const alphaVantageResponse = await fetch(
-            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${stockSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}`
-        );
-        const alphaVantageData = await alphaVantageResponse.json();
-
         if (!alphaVantageResponse.ok || alphaVantageData["Error Message"]) {
             throw new Error(`Alpha Vantage API error: ${alphaVantageData["Error Message"]}`);
         }
 
-        // Fetch company overview from Alpha Vantage API
-        const overviewResponse = await fetch(
-            `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${stockSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}`
-        );
-        const overviewData = await overviewResponse.json();
-
-        // Extracting and structuring data
         const globalQuote = alphaVantageData["Global Quote"] || {};
+
         const combinedData = {
             symbol: stockSymbol,
             companyName: overviewData?.Name || "N/A",
@@ -52,8 +47,7 @@ export async function GET(request) {
             industry: overviewData?.Industry || "N/A",
             currentPrice: finnhubData?.c ?? globalQuote?.["05. price"] ?? "N/A",
             change: finnhubData?.d ?? globalQuote?.["09. change"] ?? "N/A",
-            changePercent:
-                (finnhubData?.dp ?? parseFloat(globalQuote?.["10. change percent"]?.replace("%", ""))) || "N/A",
+            changePercent: (finnhubData?.dp ?? parseFloat(globalQuote?.["10. change percent"]?.replace("%", ""))) || "N/A",
             high: finnhubData?.h ?? globalQuote?.["03. high"] ?? "N/A",
             low: finnhubData?.l ?? globalQuote?.["04. low"] ?? "N/A",
             open: finnhubData?.o ?? globalQuote?.["02. open"] ?? "N/A",
@@ -82,8 +76,7 @@ export async function GET(request) {
                     Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
                 },
                 body: JSON.stringify({
-                    model: "pplx-7b-chat", // Use correct model name
-                    response_format: { type: "json_object" }, // Request JSON format
+                    model: "sonar-pro",
                     messages: [
                         {
                             role: "system",
@@ -91,20 +84,16 @@ export async function GET(request) {
                         },
                         {
                             role: "user",
-                            content: `Analyze ${stockSymbol} (${combinedData.companyName}). Current price: $${combinedData.currentPrice?.toFixed(2) || 'N/A'}. `
-                                + `Change: ${combinedData.changePercent?.toFixed(2) + '%' || 'N/A'}. Market cap: $${combinedData.marketCap?.toLocaleString() || 'N/A'}. `
+                            content: `Analyze ${stockSymbol} (${combinedData.companyName}). Current price: $${combinedData.currentPrice}. `
+                                + `Change: ${combinedData.changePercent}%. Market cap: $${combinedData.marketCap}. `
                                 + `Sector: ${combinedData.sector}. Industry: ${combinedData.industry}. `
-                                + "Return JSON analysis with these EXACT keys: summary, outlook (bullish/bearish/neutral), confidence (0-100), keyFactors (array)."
+                                + "Return JSON analysis with these keys: summary, outlook (bullish/bearish/neutral), confidence (0-100), keyFactors (array)."
                         }
                     ],
                     max_tokens: 300,
                     temperature: 0.3,
                 }),
             });
-
-            if (!perplexityResponse.ok) {
-                throw new Error(`Perplexity API error: ${perplexityResponse.status}`);
-            }
 
             const perplexityData = await perplexityResponse.json();
 

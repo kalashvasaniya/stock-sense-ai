@@ -90,15 +90,13 @@ const VolumeChart = ({ data }) => (
 )
 
 // Generate prediction data function
-const generatePredictionData = (currentPrice, days = 180) => {
+const generateLast30DaysData = (currentPrice) => {
   const data = []
-  let price = currentPrice
   const today = new Date()
-  for (let i = 0; i < days; i++) {
+  for (let i = 29; i >= 0; i--) {
     const date = new Date(today)
-    date.setDate(date.getDate() + i)
-    // More realistic price movement with a slight upward trend
-    price = price * (1 + (Math.random() - 0.48) * 0.03)
+    date.setDate(date.getDate() - i)
+    const price = currentPrice * (1 + (Math.random() - 0.5) * 0.1)
     data.push({
       date: date.toISOString().split("T")[0],
       price: Number.parseFloat(price.toFixed(2)),
@@ -131,7 +129,7 @@ const EnhancedStockDashboard = () => {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error)
       setStockData(data)
-      setPredictionData(generatePredictionData(data.currentPrice))
+      setPredictionData(generateLast30DaysData(data.currentPrice))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -140,15 +138,15 @@ const EnhancedStockDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 p-4 sm:p-8">
+    <div className="min-h-screen rounded-xl bg-gray-900 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto">
         <motion.h1
-          className="text-3xl sm:text-4xl font-bold text-white mb-8 text-center"
+          className="text-2xl sm:text-3xl font-bold text-white mb-8 text-center"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          Advanced Stock Analysis Dashboard
+          Enhanced Stock Insights Dashboard
         </motion.h1>
 
         <motion.form
@@ -241,7 +239,7 @@ const EnhancedStockDashboard = () => {
             {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
-                <h3 className="text-xl font-semibold text-white mb-4">Stock Price Prediction (Next 180 Days)</h3>
+                <h3 className="text-xl font-semibold text-white mb-4">Stock Price (Last 30 Days)</h3>
                 <PredictionChart data={predictionData} />
               </div>
               <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { FaChartLine, FaChartBar, FaDollarSign, FaInfoCircle } from "react-icons/fa"
@@ -113,11 +113,37 @@ const EnhancedStockDashboard = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [predictionData, setPredictionData] = useState([])
+  const [lastAnalysisTime, setLastAnalysisTime] = useState(0)
+  const [timeRemaining, setTimeRemaining] = useState(0)
+
+  useEffect(() => {
+    const storedTime = localStorage.getItem("lastAnalysisTime")
+    if (storedTime) {
+      setLastAnalysisTime(parseInt(storedTime, 10))
+    }
+  }, [])
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const currentTime = Date.now()
+      const elapsedTime = currentTime - lastAnalysisTime
+      const remainingTime = Math.max(0, 300000 - elapsedTime) // 300000 ms = 5 minutes
+      setTimeRemaining(Math.ceil(remainingTime / 1000))
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [lastAnalysisTime])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!stockSymbol.trim()) {
       setError("Please enter a stock symbol")
+      return
+    }
+
+    const currentTime = Date.now()
+    if (currentTime - lastAnalysisTime < 300000) { // 300000 ms = 5 minutes
+      setError(`Please wait ${timeRemaining} seconds before analyzing again`)
       return
     }
 
@@ -130,12 +156,16 @@ const EnhancedStockDashboard = () => {
       if (!response.ok) throw new Error(data.error)
       setStockData(data)
       setPredictionData(generateLast30DaysData(data.currentPrice))
+      setLastAnalysisTime(currentTime)
+      localStorage.setItem("lastAnalysisTime", currentTime.toString())
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
   }
+
+  const isButtonDisabled = loading || timeRemaining > 0
 
   return (
     <div className="min-h-screen rounded-xl bg-gray-900 p-4 sm:p-8">
@@ -167,10 +197,10 @@ const EnhancedStockDashboard = () => {
             />
             <button
               type="submit"
-              disabled={loading}
+              disabled={isButtonDisabled}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors duration-200"
             >
-              {loading ? "Loading..." : "Analyze"}
+              {loading ? "Loading..." : isButtonDisabled ? `Wait ${timeRemaining}s` : "Analyze"}
             </button>
           </div>
         </motion.form>

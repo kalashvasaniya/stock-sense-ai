@@ -92,22 +92,15 @@ const calculateBollingerBands = (data, period = 20, standardDeviations = 2) => {
   })
 }
 
-const generateCandlestickData = (baseData) => {
-  return baseData.map((item, index) => {
-    const basePrice = item.price
-    const volatility = 0.02
-    
-    const open = index === 0 ? basePrice : baseData[index - 1].close || basePrice
-    const close = basePrice
-    const high = Math.max(open, close) * (1 + Math.random() * volatility)
-    const low = Math.min(open, close) * (1 - Math.random() * volatility)
-    
+const processCandlestickData = (baseData) => {
+  return baseData.map((item) => {
+    // Use real OHLC data from API if available, fallback to price for missing values
     return {
       ...item,
-      open: Number(open.toFixed(2)),
-      high: Number(high.toFixed(2)),
-      low: Number(low.toFixed(2)),
-      close: Number(close.toFixed(2))
+      open: typeof item.open === 'number' ? Number(item.open.toFixed(2)) : Number(item.price.toFixed(2)),
+      high: typeof item.high === 'number' ? Number(item.high.toFixed(2)) : Number(item.price.toFixed(2)),
+      low: typeof item.low === 'number' ? Number(item.low.toFixed(2)) : Number(item.price.toFixed(2)),
+      close: typeof item.price === 'number' ? Number(item.price.toFixed(2)) : Number(item.price.toFixed(2))
     }
   })
 }
@@ -158,25 +151,30 @@ const TradingViewChart = ({ data, symbol, className = "" }) => {
   const [processedData, setProcessedData] = useState([])
 
   useEffect(() => {
-    if (!data || data.length === 0) return
+    if (!data || data.length === 0) {
+      setProcessedData([])
+      return
+    }
 
     let processed = [...data]
 
-    // Add candlestick data
-    processed = generateCandlestickData(processed)
+    // Process candlestick data using real OHLC values
+    processed = processCandlestickData(processed)
 
-    // Add technical indicators based on settings
-    if (indicators.sma) {
-      processed = calculateSMA(processed, 20)
-    }
-    if (indicators.ema) {
-      processed = calculateEMA(processed, 12)
-    }
-    if (indicators.rsi) {
-      processed = calculateRSI(processed, 14)
-    }
-    if (indicators.bollinger) {
-      processed = calculateBollingerBands(processed, 20, 2)
+    // Add technical indicators based on settings (only if we have enough data)
+    if (processed.length > 1) {
+      if (indicators.sma && processed.length >= 20) {
+        processed = calculateSMA(processed, 20)
+      }
+      if (indicators.ema && processed.length >= 12) {
+        processed = calculateEMA(processed, 12)
+      }
+      if (indicators.rsi && processed.length >= 14) {
+        processed = calculateRSI(processed, 14)
+      }
+      if (indicators.bollinger && processed.length >= 20) {
+        processed = calculateBollingerBands(processed, 20, 2)
+      }
     }
 
     setProcessedData(processed)
@@ -486,14 +484,38 @@ const TradingViewChart = ({ data, symbol, className = "" }) => {
       {/* Main Chart */}
       <div className="p-6">
         <div className="h-[400px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            {getChartComponent()}
-          </ResponsiveContainer>
+          {processedData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <ChartBarIcon className="h-16 w-16 text-neutral-600 mb-4" />
+              <h3 className="text-lg font-semibold text-white mb-2">No Chart Data Available</h3>
+              <p className="text-neutral-400 text-sm mb-4">
+                Historical data is temporarily unavailable. Please try again or check your API configuration.
+              </p>
+              <div className="bg-neutral-800 rounded-lg p-3">
+                <p className="text-neutral-500 text-xs">
+                  💡 Current stock metrics are still available above
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {processedData.length === 1 && (
+                <div className="mb-4 bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                  <p className="text-blue-400 text-sm">
+                    📊 Limited to current day data - Historical data unavailable. Technical indicators require multiple data points.
+                  </p>
+                </div>
+              )}
+              <ResponsiveContainer width="100%" height="100%">
+                {getChartComponent()}
+              </ResponsiveContainer>
+            </>
+          )}
         </div>
       </div>
 
       {/* Volume Chart */}
-      {showVolume && (
+      {showVolume && processedData.length > 0 && (
         <div className="px-6 pb-6">
           <div className="h-[120px] w-full">
             <ResponsiveContainer width="100%" height="100%">

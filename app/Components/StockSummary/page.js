@@ -260,9 +260,9 @@ const AnalysisDisplay = ({ analysis }) => {
   )
 }
 
-// Use real historical data or generate fallback data
-const prepareChartData = (historicalData, currentPrice) => {
-  // If we have real historical data, use it
+// Use real historical data from API with intelligent fallback
+const prepareChartData = (historicalData, stockData) => {
+  // Use real historical data if available
   if (historicalData && historicalData.length > 0) {
     return historicalData.map(item => ({
       date: item.date,
@@ -274,33 +274,22 @@ const prepareChartData = (historicalData, currentPrice) => {
     }))
   }
   
-  // Fallback: generate minimal realistic data if no historical data available
-  const data = []
-  const today = new Date()
-  let price = typeof currentPrice === 'number' ? currentPrice : 100
-
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(today)
-    date.setDate(date.getDate() - i)
-    
-    // Much more conservative price movement for fallback
-    const change = (Math.random() - 0.5) * 0.005 // 0.5% max daily change
-    price = price * (1 + change)
-    
-    const open = price * (1 + (Math.random() - 0.5) * 0.002)
-    const high = Math.max(price, open) * (1 + Math.random() * 0.002)
-    const low = Math.min(price, open) * (1 - Math.random() * 0.002)
-    
-    data.push({
-      date: date.toISOString().split("T")[0],
-      price: Number(price.toFixed(2)),
-      open: Number(open.toFixed(2)),
-      high: Number(high.toFixed(2)),
-      low: Number(low.toFixed(2)),
-      volume: Math.floor(Math.random() * 500000) + 100000, // Conservative volume
-    })
+  // Fallback: Create single data point from current real data
+  // This shows the current trading information even when historical API fails
+  if (stockData && typeof stockData.currentPrice === 'number') {
+    const today = new Date().toISOString().split('T')[0]
+    return [{
+      date: today,
+      price: stockData.currentPrice,
+      open: typeof stockData.open === 'number' ? stockData.open : stockData.currentPrice,
+      high: typeof stockData.high === 'number' ? stockData.high : stockData.currentPrice,
+      low: typeof stockData.low === 'number' ? stockData.low : stockData.currentPrice,
+      volume: typeof stockData.volume === 'number' ? stockData.volume : 0
+    }]
   }
-  return data
+  
+  // If no data at all, return empty array
+  return []
 }
 
 // Main Component
@@ -358,7 +347,7 @@ const EnhancedStockDashboard = () => {
       }
       
       setStockData(data)
-      setChartData(prepareChartData(data.historicalData, data.currentPrice))
+      setChartData(prepareChartData(data.historicalData, data))
       setLastAnalysisTime(currentTime)
       localStorage.setItem("lastAnalysisTime", currentTime.toString())
     } catch (err) {
@@ -373,9 +362,9 @@ const EnhancedStockDashboard = () => {
   const handleAnalyzeFromWatchlist = (symbol) => {
     setStockSymbol(symbol)
     setActiveTab("analysis")
-    // Trigger analysis
-    const mockSubmit = { preventDefault: () => {} }
-    handleSubmit(mockSubmit)
+    // Trigger analysis with the selected symbol
+    const syntheticEvent = { preventDefault: () => {} }
+    handleSubmit(syntheticEvent)
   }
 
   return (

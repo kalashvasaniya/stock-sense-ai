@@ -233,10 +233,10 @@ Return JSON with: {"summary": "brief analysis", "outlook": "bullish/bearish/neut
                 clearTimeout(timeoutId);
 
                 if (perplexityResponse.ok) {
-                    const perplexityData = await perplexityResponse.json();
-                    
-                    if (perplexityData?.choices?.[0]?.message?.content) {
-                        try {
+            const perplexityData = await perplexityResponse.json();
+
+            if (perplexityData?.choices?.[0]?.message?.content) {
+                try {
                             let content = perplexityData.choices[0].message.content.trim();
                             
                             // Clean up the response
@@ -259,7 +259,7 @@ Return JSON with: {"summary": "brief analysis", "outlook": "bullish/bearish/neut
                             if (Array.isArray(aiAnalysis.keyFactors) && aiAnalysis.keyFactors.length > 0) {
                                 analysis.keyFactors = [...aiAnalysis.keyFactors.slice(0, 3), ...analysis.keyFactors.slice(0, 2)].slice(0, 4);
                             }
-                        } catch (parseError) {
+                } catch (parseError) {
                             console.warn("AI response parsing failed, using fallback analysis");
                         }
                     }

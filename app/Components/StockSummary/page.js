@@ -94,23 +94,23 @@ const PriceChart = ({ data, symbol }) => (
         <ChartBarIcon className="h-5 w-5" />
         <span className="text-sm">{symbol}</span>
       </div>
-    </div>
-    <ResponsiveContainer width="100%" height={300}>
-      <AreaChart data={data}>
+  </div>
+  <ResponsiveContainer width="100%" height={300}>
+    <AreaChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
-        <XAxis
-          dataKey="date"
+      <XAxis
+        dataKey="date"
           tick={{ fill: "#A3A3A3", fontSize: 12 }}
           tickLine={{ stroke: "#525252" }}
           tickFormatter={(tick) => new Date(tick).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-        />
-        <YAxis
+      />
+      <YAxis
           tick={{ fill: "#A3A3A3", fontSize: 12 }}
           tickLine={{ stroke: "#525252" }}
           tickFormatter={(value) => `$${value.toFixed(0)}`}
           domain={['dataMin * 0.98', 'dataMax * 1.02']}
-        />
-        <Tooltip
+      />
+      <Tooltip
           contentStyle={{ 
             backgroundColor: "#1C1C1C", 
             border: "1px solid #404040",
@@ -135,14 +135,14 @@ const PriceChart = ({ data, symbol }) => (
           dot={false}
           activeDot={{ r: 6, fill: "#3B82F6" }}
         />
-        <defs>
-          <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+      <defs>
+        <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-      </AreaChart>
-    </ResponsiveContainer>
+          <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+    </AreaChart>
+  </ResponsiveContainer>
   </div>
 )
 
@@ -155,8 +155,8 @@ const VolumeChart = ({ data }) => (
         <span className="text-sm">Shares Traded</span>
       </div>
     </div>
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data}>
+  <ResponsiveContainer width="100%" height={300}>
+    <BarChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
         <XAxis 
           dataKey="date" 
@@ -164,23 +164,23 @@ const VolumeChart = ({ data }) => (
           tickLine={{ stroke: "#525252" }}
           tickFormatter={(tick) => new Date(tick).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         />
-        <YAxis
+      <YAxis
           tick={{ fill: "#A3A3A3", fontSize: 12 }}
           tickLine={{ stroke: "#525252" }}
-          tickFormatter={(value) => formatLargeNumber(value)}
-        />
-        <Tooltip
+        tickFormatter={(value) => formatLargeNumber(value)}
+      />
+      <Tooltip
           contentStyle={{ 
             backgroundColor: "#1C1C1C", 
             border: "1px solid #404040",
             borderRadius: "8px" 
           }}
           labelStyle={{ color: "#F5F5F5" }}
-          formatter={(value) => [formatLargeNumber(value), "Volume"]}
-        />
+        formatter={(value) => [formatLargeNumber(value), "Volume"]}
+      />
         <Bar dataKey="volume" fill="#10B981" radius={[2, 2, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
+    </BarChart>
+  </ResponsiveContainer>
   </div>
 )
 
@@ -260,26 +260,44 @@ const AnalysisDisplay = ({ analysis }) => {
   )
 }
 
-// Generate realistic stock data
-const generateStockData = (currentPrice) => {
+// Use real historical data or generate fallback data
+const prepareChartData = (historicalData, currentPrice) => {
+  // If we have real historical data, use it
+  if (historicalData && historicalData.length > 0) {
+    return historicalData.map(item => ({
+      date: item.date,
+      price: item.price,
+      open: item.open,
+      high: item.high,
+      low: item.low,
+      volume: item.volume
+    }))
+  }
+  
+  // Fallback: generate minimal realistic data if no historical data available
   const data = []
   const today = new Date()
-  let price = currentPrice * 0.95 // Start from slightly lower price
+  let price = typeof currentPrice === 'number' ? currentPrice : 100
 
   for (let i = 29; i >= 0; i--) {
     const date = new Date(today)
     date.setDate(date.getDate() - i)
     
-    // Generate more realistic price movement
-    const volatility = 0.02 // 2% daily volatility
-    const drift = 0.0003 // Slight upward drift
-    const change = (Math.random() - 0.5) * volatility + drift
+    // Much more conservative price movement for fallback
+    const change = (Math.random() - 0.5) * 0.005 // 0.5% max daily change
     price = price * (1 + change)
+    
+    const open = price * (1 + (Math.random() - 0.5) * 0.002)
+    const high = Math.max(price, open) * (1 + Math.random() * 0.002)
+    const low = Math.min(price, open) * (1 - Math.random() * 0.002)
     
     data.push({
       date: date.toISOString().split("T")[0],
       price: Number(price.toFixed(2)),
-      volume: Math.floor(Math.random() * 2000000) + 500000,
+      open: Number(open.toFixed(2)),
+      high: Number(high.toFixed(2)),
+      low: Number(low.toFixed(2)),
+      volume: Math.floor(Math.random() * 500000) + 100000, // Conservative volume
     })
   }
   return data
@@ -340,7 +358,7 @@ const EnhancedStockDashboard = () => {
       }
       
       setStockData(data)
-      setChartData(generateStockData(data.currentPrice))
+      setChartData(prepareChartData(data.historicalData, data.currentPrice))
       setLastAnalysisTime(currentTime)
       localStorage.setItem("lastAnalysisTime", currentTime.toString())
     } catch (err) {
@@ -365,8 +383,8 @@ const EnhancedStockDashboard = () => {
       {/* Navigation Tabs */}
       <motion.div
         className="bg-neutral-900 p-2 rounded-2xl border border-neutral-800"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
         <div className="flex bg-neutral-800 rounded-xl p-1">
@@ -418,10 +436,10 @@ const EnhancedStockDashboard = () => {
           <div className="flex gap-4">
             <div className="flex-1 relative">
               <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
-              <input
-                type="text"
-                value={stockSymbol}
-                onChange={(e) => setStockSymbol(e.target.value.toUpperCase())}
+            <input
+              type="text"
+              value={stockSymbol}
+              onChange={(e) => setStockSymbol(e.target.value.toUpperCase())}
                 className="w-full pl-12 pr-4 py-4 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="Enter stock symbol (e.g., AAPL, TSLA, MSFT)"
                 maxLength={10}
@@ -543,16 +561,16 @@ const EnhancedStockDashboard = () => {
               />
                               <MetricCard
                   title="52W High"
-                  value={formatCurrency(stockData.weekHigh52)}
+                value={formatCurrency(stockData.weekHigh52)}
                   icon={ArrowTrendingUpIcon}
-                  color="blue"
-                />
-                              <MetricCard
+                color="blue"
+              />
+              <MetricCard
                   title="52W Low"
-                  value={formatCurrency(stockData.weekLow52)}
+                value={formatCurrency(stockData.weekLow52)}
                   icon={ArrowTrendingDownIcon}
-                  color="red"
-                />
+                color="red"
+              />
             </div>
 
             {/* Additional Financial Metrics */}
@@ -625,7 +643,7 @@ const EnhancedStockDashboard = () => {
                 <h3 className="text-xl font-semibold text-white mb-6 flex items-center space-x-3">
                   <div className="bg-blue-500/10 p-2 rounded-lg">
                     <ChartBarIcon className="h-6 w-6 text-blue-500" />
-                  </div>
+              </div>
                   <span>Trading Information</span>
                 </h3>
                 <div className="space-y-4">
@@ -658,7 +676,7 @@ const EnhancedStockDashboard = () => {
 
               {/* AI Analysis */}
               {stockData.analysis && <AnalysisDisplay analysis={stockData.analysis} />}
-            </div>
+                  </div>
 
             {/* Company Description */}
             {stockData.description && stockData.description !== "No description available" && (
@@ -670,7 +688,7 @@ const EnhancedStockDashboard = () => {
                   <span>Company Overview</span>
                 </h3>
                 <p className="text-neutral-300 leading-relaxed">{stockData.description}</p>
-              </div>
+                      </div>
             )}
 
             {/* Data Quality Indicator */}

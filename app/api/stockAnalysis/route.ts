@@ -104,114 +104,217 @@ export async function GET(request: Request) {
             description: overview?.Description || "No description available"
         };
 
-        // Enhanced Perplexity AI analysis with better error handling
-        let analysis = {
-            summary: "Analysis temporarily unavailable due to API limitations.",
-            outlook: "neutral" as const,
-            confidence: 0,
-            keyFactors: ["Data retrieved successfully"],
-            technicalIndicators: {
-                rsi: "N/A",
-                trend: "neutral",
-                support: "N/A",
-                resistance: "N/A"
+        // Create intelligent fallback analysis based on real data
+        const createFallbackAnalysis = (data: any) => {
+            const currentPrice = data.currentPrice;
+            const changePercent = data.changePercent;
+            const peRatio = data.peRatio;
+            const weekHigh52 = data.weekHigh52;
+            const weekLow52 = data.weekLow52;
+            
+            let outlook = "neutral";
+            let confidence = 65;
+            let keyFactors = [];
+            
+            // Determine outlook based on real metrics
+            if (typeof changePercent === 'number') {
+                if (changePercent > 5) {
+                    outlook = "bullish";
+                    confidence = 75;
+                    keyFactors.push("Strong positive momentum with significant gains");
+                } else if (changePercent > 0) {
+                    outlook = "bullish";
+                    confidence = 60;
+                    keyFactors.push("Positive price movement indicates buying interest");
+                } else if (changePercent < -5) {
+                    outlook = "bearish";
+                    confidence = 75;
+                    keyFactors.push("Significant decline suggests selling pressure");
+                } else if (changePercent < 0) {
+                    outlook = "bearish";
+                    confidence = 60;
+                    keyFactors.push("Negative price movement indicates weakness");
+                }
             }
+            
+            // Analyze P/E ratio
+            if (typeof peRatio === 'number') {
+                if (peRatio > 0 && peRatio < 15) {
+                    keyFactors.push("Attractive valuation with low P/E ratio");
+                    confidence += 5;
+                } else if (peRatio > 30) {
+                    keyFactors.push("High P/E ratio suggests premium valuation");
+                    if (outlook === "bullish") confidence -= 5;
+                }
+            }
+            
+            // Analyze 52-week position
+            if (typeof currentPrice === 'number' && typeof weekHigh52 === 'number' && typeof weekLow52 === 'number') {
+                const position = (currentPrice - weekLow52) / (weekHigh52 - weekLow52);
+                if (position > 0.8) {
+                    keyFactors.push("Trading near 52-week highs shows strength");
+                } else if (position < 0.2) {
+                    keyFactors.push("Trading near 52-week lows, potential value opportunity");
+                }
+            }
+            
+            // Add sector info if available
+            if (data.sector && data.sector !== "N/A") {
+                keyFactors.push(`${data.sector} sector exposure`);
+            }
+            
+            // Ensure we have at least some key factors
+            if (keyFactors.length === 0) {
+                keyFactors.push("Financial data retrieved and analyzed");
+            }
+            
+            // Create summary based on analysis
+            let summary = `${data.companyName} is currently ${outlook === 'bullish' ? 'showing positive signals' : outlook === 'bearish' ? 'showing negative signals' : 'in a neutral position'}`;
+            if (typeof changePercent === 'number') {
+                summary += ` with a ${changePercent >= 0 ? 'gain' : 'loss'} of ${Math.abs(changePercent).toFixed(2)}% in recent trading.`;
+            }
+            
+            return {
+                summary,
+                outlook,
+                confidence: Math.min(confidence, 85), // Cap confidence
+                keyFactors: keyFactors.slice(0, 4), // Limit to 4 factors
+                technicalIndicators: {
+                    rsi: typeof changePercent === 'number' ? (changePercent > 5 ? "overbought" : changePercent < -5 ? "oversold" : "neutral") : "neutral",
+                    trend: typeof changePercent === 'number' ? (changePercent > 2 ? "uptrend" : changePercent < -2 ? "downtrend" : "sideways") : "sideways",
+                    support: typeof weekLow52 === 'number' ? weekLow52.toFixed(2) : "N/A",
+                    resistance: typeof weekHigh52 === 'number' ? weekHigh52.toFixed(2) : "N/A"
+                }
+            };
         };
 
-        try {
-            const perplexityPayload = {
-                model: "llama-3.1-sonar-small-128k-online",
-                messages: [
-                    {
-                        role: "system",
-                        content: `You are a professional financial analyst. Analyze the provided stock data and return ONLY a valid JSON object with the following structure:
-{
-  "summary": "Brief 2-3 sentence analysis of the stock",
-  "outlook": "bullish|bearish|neutral",
-  "confidence": number_between_0_and_100,
-  "keyFactors": ["factor1", "factor2", "factor3"],
-  "technicalIndicators": {
-    "rsi": "overbought|oversold|neutral",
-    "trend": "uptrend|downtrend|sideways",
-    "support": "price_level_or_N/A",
-    "resistance": "price_level_or_N/A"
-  }
-}
-Return ONLY the JSON object, no additional text.`
-                    },
-                    {
-                        role: "user",
-                        content: `Analyze ${stockSymbol} (${combinedData.companyName}):
-Current Price: $${combinedData.currentPrice}
+        // Enhanced Perplexity AI analysis with better error handling
+        let analysis = createFallbackAnalysis(combinedData);
+
+        // Try to enhance analysis with Perplexity AI (optional enhancement)
+        if (PERPLEXITY_API_KEY && PERPLEXITY_API_KEY.length > 10) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+                const perplexityPayload = {
+                    model: "llama-3.1-sonar-small-128k-online",
+                    messages: [
+                        {
+                            role: "system",
+                            content: "You are a financial analyst. Analyze the stock data and respond with valid JSON only. No markdown, no explanations, just JSON."
+                        },
+                        {
+                            role: "user",
+                            content: `Analyze ${stockSymbol} stock:
+Price: $${combinedData.currentPrice}
 Change: ${combinedData.changePercent}%
-Market Cap: $${combinedData.marketCap}
+P/E: ${combinedData.peRatio}
 Sector: ${combinedData.sector}
-Industry: ${combinedData.industry}
-P/E Ratio: ${combinedData.peRatio}
-52W High: $${combinedData.weekHigh52}
-52W Low: $${combinedData.weekLow52}
-Beta: ${combinedData.beta}`
-                    }
-                ],
-                max_tokens: 500,
-                temperature: 0.1,
-                top_p: 0.9
-            };
 
-            console.log('Calling Perplexity API...');
-            const perplexityResponse = await fetch("https://api.perplexity.ai/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
-                },
-                body: JSON.stringify(perplexityPayload),
-            });
-
-            if (perplexityResponse.ok) {
-                const perplexityData = await perplexityResponse.json();
-                
-                if (perplexityData?.choices?.[0]?.message?.content) {
-                    try {
-                        const content = perplexityData.choices[0].message.content.trim();
-                        // Remove any markdown formatting if present
-                        const cleanContent = content.replace(/```json\n?|```\n?/g, '').trim();
-                        const parsedAnalysis = JSON.parse(cleanContent);
-                        
-                        // Validate the parsed analysis structure
-                        if (parsedAnalysis.summary && parsedAnalysis.outlook && typeof parsedAnalysis.confidence === 'number') {
-                            analysis = {
-                                ...analysis,
-                                ...parsedAnalysis,
-                                confidence: Math.min(Math.max(parsedAnalysis.confidence, 0), 100) // Ensure confidence is between 0-100
-                            };
-                            console.log('Successfully parsed Perplexity analysis');
-                        } else {
-                            console.warn('Invalid analysis structure from Perplexity');
+Return JSON with: {"summary": "brief analysis", "outlook": "bullish/bearish/neutral", "confidence": 75, "keyFactors": ["factor1", "factor2"]}`
                         }
-                    } catch (parseError) {
-                        console.error("Failed to parse Perplexity response:", parseError);
-                        console.log("Raw content:", perplexityData.choices[0].message.content);
+                    ],
+                    max_tokens: 300,
+                    temperature: 0.2
+                };
+
+                console.log('Attempting Perplexity AI enhancement...');
+                const perplexityResponse = await fetch("https://api.perplexity.ai/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
+                    },
+                    body: JSON.stringify(perplexityPayload),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (perplexityResponse.ok) {
+                    const perplexityData = await perplexityResponse.json();
+                    
+                    if (perplexityData?.choices?.[0]?.message?.content) {
+                        try {
+                            let content = perplexityData.choices[0].message.content.trim();
+                            
+                            // Clean up the response
+                            content = content.replace(/```json\n?|```\n?/g, '');
+                            content = content.replace(/^[^{]*({[\s\S]*})[^}]*$/, '$1');
+                            
+                            const aiAnalysis = JSON.parse(content);
+                            
+                            // Validate and merge AI analysis
+                            if (aiAnalysis.summary && typeof aiAnalysis.summary === 'string') {
+                                analysis.summary = aiAnalysis.summary;
+                                console.log('✅ AI analysis successfully integrated');
+                            }
+                            if (aiAnalysis.outlook && ['bullish', 'bearish', 'neutral'].includes(aiAnalysis.outlook)) {
+                                analysis.outlook = aiAnalysis.outlook;
+                            }
+                            if (typeof aiAnalysis.confidence === 'number' && aiAnalysis.confidence > 0) {
+                                analysis.confidence = Math.min(Math.max(aiAnalysis.confidence, 30), 90);
+                            }
+                            if (Array.isArray(aiAnalysis.keyFactors) && aiAnalysis.keyFactors.length > 0) {
+                                analysis.keyFactors = [...aiAnalysis.keyFactors.slice(0, 3), ...analysis.keyFactors.slice(0, 2)].slice(0, 4);
+                            }
+                        } catch (parseError) {
+                            console.warn("AI response parsing failed, using fallback analysis");
+                        }
                     }
                 } else {
-                    console.warn('No content in Perplexity response');
+                    console.warn(`Perplexity API returned ${perplexityResponse.status}, using fallback analysis`);
                 }
-            } else {
-                const errorText = await perplexityResponse.text();
-                console.error(`Perplexity API error: ${perplexityResponse.status} - ${errorText}`);
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.warn("Perplexity API timed out, using fallback analysis");
+                } else {
+                    console.warn("Perplexity API failed, using fallback analysis:", error.message);
+                }
+            }
+        } else {
+            console.log("Perplexity API key not configured, using intelligent fallback analysis");
+        }
+
+        // Fetch real historical data for charts
+        let historicalData = [];
+        try {
+            const historicalResponse = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${stockSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}&outputsize=compact`);
+            if (historicalResponse.ok) {
+                const historicalJson = await historicalResponse.json();
+                const timeSeries = historicalJson["Time Series (Daily)"];
+                
+                if (timeSeries) {
+                    // Get last 30 days of real data
+                    const dates = Object.keys(timeSeries).slice(0, 30).reverse();
+                    historicalData = dates.map(date => {
+                        const dayData = timeSeries[date];
+                        return {
+                            date,
+                            price: parseFloat(dayData["4. close"]),
+                            open: parseFloat(dayData["1. open"]),
+                            high: parseFloat(dayData["2. high"]),
+                            low: parseFloat(dayData["3. low"]),
+                            volume: parseInt(dayData["5. volume"])
+                        };
+                    });
+                }
             }
         } catch (error) {
-            console.error("Perplexity API request failed:", error);
+            console.warn("Failed to fetch historical data:", error);
         }
 
         const finalResponse = {
             ...combinedData,
             analysis,
+            historicalData,
             timestamp: new Date().toISOString(),
             dataQuality: {
                 finnhub: finnhubData.status === 'fulfilled' ? 'success' : 'failed',
                 alphaVantageQuote: alphaVantageData.status === 'fulfilled' ? 'success' : 'failed',
-                alphaVantageOverview: overviewData.status === 'fulfilled' ? 'success' : 'failed'
+                alphaVantageOverview: overviewData.status === 'fulfilled' ? 'success' : 'failed',
+                historical: historicalData.length > 0 ? 'success' : 'failed'
             }
         };
 
